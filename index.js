@@ -1,6 +1,7 @@
 var os = require('os');
 var http = require('http');
 var https = require('https');
+var chalk = require('chalk');
 var owns = {}.hasOwnProperty;
 
 module.exports = function proxyMiddleware(options) {
@@ -13,6 +14,16 @@ module.exports = function proxyMiddleware(options) {
 
   return function (req, resp, next) {
     var url = req.url;
+
+    if (options.startsWith) {
+      if (typeof options.startsWith === 'string') {
+        options.startsWith = [options.startsWith];
+      }
+      if (!urlStartsWith(url, options.startsWith)) {
+        return next()
+      }
+    }
+
     // You can pass the route within the options, as well
     if (typeof options.route === 'string') {
       if (url === options.route) {
@@ -59,6 +70,9 @@ module.exports = function proxyMiddleware(options) {
       applyViaHeader(myRes.headers, opts, myRes.headers);
       rewriteCookieHosts(myRes.headers, opts, myRes.headers, req);
       resp.writeHead(myRes.statusCode, myRes.headers);
+      if (!options.silent) {
+        console.log('Proxy', chalk.magenta(url));
+      }
       myRes.on('error', function (err) {
         next(err);
       });
@@ -75,12 +89,20 @@ module.exports = function proxyMiddleware(options) {
   };
 };
 
+function urlStartsWith(url, routes) {
+  for (var i = 0; i < routes.length; i++) {
+    if (url.indexOf(routes[i]) === 0)
+      return true;
+  }
+  return false
+}
+
 function applyViaHeader(existingHeaders, opts, applyTo) {
   if (!opts.via) return;
 
-  var viaName = (true === opts.via) ?  os.hostname() : opts.via;
+  var viaName = (true === opts.via) ? os.hostname() : opts.via;
   var viaHeader = '1.1 ' + viaName;
-  if(existingHeaders.via) {
+  if (existingHeaders.via) {
     viaHeader = existingHeaders.via + ', ' + viaHeader;
   }
 
@@ -93,11 +115,11 @@ function rewriteCookieHosts(existingHeaders, opts, applyTo, req) {
   }
 
   var existingCookies = existingHeaders['set-cookie'],
-      rewrittenCookies = [],
-      rewriteHostname = (true === opts.cookieRewrite) ? os.hostname() : opts.cookieRewrite;
+    rewrittenCookies = [],
+    rewriteHostname = (true === opts.cookieRewrite) ? os.hostname() : opts.cookieRewrite;
 
   if (!Array.isArray(existingCookies)) {
-    existingCookies = [ existingCookies ];
+    existingCookies = [existingCookies];
   }
 
   for (var i = 0; i < existingCookies.length; i++) {
@@ -113,8 +135,12 @@ function rewriteCookieHosts(existingHeaders, opts, applyTo, req) {
 }
 
 function slashJoin(p1, p2) {
-  if (p1.length && p1[p1.length - 1] === '/') {p1 = p1.substring(0, p1.length - 1); }
-  if (p2.length && p2[0] === '/') {p2 = p2.substring(1); }
+  if (p1.length && p1[p1.length - 1] === '/') {
+    p1 = p1.substring(0, p1.length - 1);
+  }
+  if (p2.length && p2[0] === '/') {
+    p2 = p2.substring(1);
+  }
   return p1 + '/' + p2;
 }
 
@@ -125,8 +151,8 @@ function extend(obj, src) {
 
 //merges data without changing state in either argument
 function merge(src1, src2) {
-    var merged = {};
-    extend(merged, src1);
-    extend(merged, src2);
-    return merged;
+  var merged = {};
+  extend(merged, src1);
+  extend(merged, src2);
+  return merged;
 }

@@ -1,5 +1,11 @@
 [![Build Status](https://secure.travis-ci.org/andrewrk/connect-proxy.png)](http://travis-ci.org/andrewrk/connect-proxy)
 
+#### Modifications
+Added startsWith lookup and url proxy log:
+
+- options.startsWith `string|array[string]` - Proxy only urls that starts with supplied prefix
+- options.silent `boolean` - if true will not log urls
+
 ### Usage:
 
 ```js
